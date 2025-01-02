@@ -303,8 +303,8 @@ odgovor2c_2 = predsedniki %>%
       summarise(povprecje = mean(populacija)),
     by = c("zvezna_drzava_rojstva" = "drzava")
   ) %>%
-  filter(predsednik %in% odgovor2c) %>% 
-  filter(povprecje == max(povprecje)) %>% 
+  filter(predsednik %in% odgovor2c) %>%
+  filter(povprecje == max(povprecje)) %>%
   pull(predsednik)
 
 
@@ -323,8 +323,52 @@ odgovor2c_2
 # ==================================================================
 # GRAF1
 
+podatki1 = predsedniki %>%
+  distinct(predsednik, leto_volitev) %>%
+  group_by(predsednik) %>%
+  summarise(st_mandatov = n()) %>%
+  mutate(st_mandatov = as.factor(st_mandatov)) %>%
+  left_join(predsedniki %>%
+              distinct(predsednik, zvezna_drzava_rojstva),
+            by = "predsednik") %>%
+  group_by(zvezna_drzava_rojstva) %>%
+  mutate(st_predsednikov_iz_zvezne_drzave = n()) %>%
+  ungroup()
 
 
+graf1 = ggplot(podatki1) +
+  aes(
+    x = reorder(zvezna_drzava_rojstva, st_predsednikov_iz_zvezne_drzave),
+    fill = st_mandatov
+  ) +
+  geom_bar() +
+  coord_flip() +
+  xlab("Zvezna država") +
+  ylab("Število predsednikov") +
+  ggtitle("Število predsednikov, rojenih v posamezni državi") +
+  scale_fill_manual(values = c("#e6e6fa", "#ff6eb4", "#8b3a62"),
+                    # barve najdene s color picker
+                    name = "Število\nmandatov") +
+  theme_minimal() +
+  theme(
+    # ročno popravimo, da se ujema z danim grafom
+    axis.title = element_text(
+      color = "#8b3a62",
+      face = "bold",
+      size = 13
+    ),
+    legend.title = element_text(color = "black", face = "bold"),
+    plot.title = element_text(
+      color = "black",
+      face = "bold",
+      hjust = 0.5,
+      size = 16
+    ),
+    axis.text.x = element_text(color = "#8b3a62", face = "bold"),
+    panel.grid.major = element_line(color = "cornsilk2"),
+    panel.grid.minor = element_line(color = "cornsilk2"),
+    panel.border = element_rect(color = "black", fill = NA)
+  )
 
 
 
@@ -335,7 +379,11 @@ graf1
 
 # ==================================================================
 # GRAF2
-
+izracunaj_starost = function(datum_rojstva, trenutni_datum) {
+  datum_rojstva = as.Date(datum_rojstva)
+  trenutni_datum = as.Date(trenutni_datum)
+  as.integer((trenutni_datum - datum_rojstva) / 365.25)
+}
 
 
 
