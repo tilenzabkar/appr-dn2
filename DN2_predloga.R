@@ -385,8 +385,106 @@ izracunaj_starost = function(datum_rojstva, trenutni_datum) {
   as.integer((trenutni_datum - datum_rojstva) / 365.25)
 }
 
+uvrsti_v_obdobje = function(leto) {
+  # OPOMBA pri uporabi točnih robnih letnic sem dobil 10 predsednikov v obdobju 1800-1849
+  # Millard Fillimore izgleda po grafu da je uvrščen v obdobje 1800-1849,
+  # zato sem tako prilagodil kodo
+  case_when(
+    1750 <= leto & leto <= 1800 ~ "1750-1799",
+    1800 <= leto & leto <= 1850 ~ "1800-1849",
+    1850 <= leto & leto <= 1900 ~ "1850-1899",
+    1900 <= leto & leto <= 1950 ~ "1900-1949",
+    1950 <= leto & leto <= 2000 ~ "1950-1999",
+    2000 <= leto & leto <= 2021 ~ "2000-2021",
+    TRUE ~ NA
+  )
+}
 
+podatki2 = predsedniki %>%
+  mutate(leto_mesec_dan_zacetka_mandata = zacetek_mandata) %>%
+  separate(
+    leto_mesec_dan_zacetka_mandata,
+    into = c(
+      "zacetek_mandata_leto",
+      "zacetek_mandata_mesec",
+      "zacetek_mandata_dan"
+    ),
+    sep = "-"
+  ) %>%
+  mutate(
+    obdobje_mandata = sapply(zacetek_mandata_leto, uvrsti_v_obdobje),
+    starost_zacetek_mandata = mapply(izracunaj_starost, datum_rojstva, zacetek_mandata),
+    starost_konec_mandata = mapply(izracunaj_starost, datum_rojstva, konec_mandata)
+  ) %>%
+  distinct(predsednik,
+           starost_zacetek_mandata,
+           starost_konec_mandata,
+           obdobje_mandata) %>%
+  group_by(obdobje_mandata) %>%
+  summarise(
+    povp_starost_zacetek = mean(starost_zacetek_mandata),
+    povp_starost_konec = mean(starost_konec_mandata, na.rm = TRUE),
+    st_predsednikov = n()
+  )
 
+graf2 = ggplot(podatki2) +
+  aes(x = obdobje_mandata) +
+  geom_point(aes(y = povp_starost_zacetek, color = "Začetek mandata"), size = 3) +
+  geom_point(aes(y = povp_starost_konec, color = "Konec mandata"), size = 3) +
+  geom_line(aes(y = povp_starost_zacetek, group = 1, color = "Začetek mandata"),
+            linewidth = 1) +
+  geom_line(aes(y = povp_starost_konec, group = 1, color = "Konec mandata"),
+            linewidth = 1) +
+  geom_label(
+    # dodamo število predsednikov v kvadratu vmes
+    aes(
+      y = (povp_starost_zacetek + povp_starost_konec) / 2,
+      label = st_predsednikov
+    ),
+    color = "#ca77f3",
+    fill = "white",
+    label.size = 0.4,
+    label.padding = unit(0.2, "lines")
+  ) +
+  labs(
+    x = "Obdobje",
+    y = "Povprečna starost v letih",
+    title = "Povprečna starost predsednikov na začetku in koncu mandata",
+    subtitle = "V kvadratih je število predsednikov v obdobju",
+    color = "Povprečna starost"
+  ) +
+  scale_color_manual(
+    values = c(
+      "Začetek mandata" = "#4ad1ff",
+      "Konec mandata" = "#4e7ca9"
+    ),
+    breaks = c("Začetek mandata", "Konec mandata") # uredimo vrstni red
+  ) +
+  guides(
+    color = guide_legend(override.aes = list(shape = NA))  # Remove points from legend
+  ) +
+  ylim(50, 70) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(
+      color = "black",
+      face = "bold",
+      hjust = 0.5,
+      size = 14
+    ),
+    plot.subtitle = element_text(color = "black", hjust = 0.5),
+    axis.title = element_text(
+      color = "#104e8b",
+      face = "italic",
+      size = 13
+    )
+  )
 
 # ==================================================================
 # Končna rešitev
