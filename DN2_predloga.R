@@ -151,7 +151,8 @@ slovar =
       "September",
       "Oktober",
       "November",
-      "December"),
+      "December"
+    ),
     st = 1:12
   )
 
@@ -160,11 +161,11 @@ odgovor1g = predsedniki %>%
   separate(datum_rojstva,
            into = c("leto", "mesec", "dan"),
            sep = "-") %>%
-  mutate(mesec = mesec %>% parse_number()) %>% 
+  mutate(mesec = mesec %>% parse_number()) %>%
   group_by(mesec) %>%
   summarise(stevilo_rojstev = n()) %>%
-  filter(stevilo_rojstev == max(stevilo_rojstev)) %>% 
-  left_join(slovar, by=c("mesec" = "st")) %>% 
+  filter(stevilo_rojstev == max(stevilo_rojstev)) %>%
+  left_join(slovar, by = c("mesec" = "st")) %>%
   pull(ime)
 
 
@@ -176,21 +177,22 @@ odgovor1g
 
 # ==================================================================
 # h)
-odgovor1h = predsedniki %>% 
-  distinct(predsednik, datum_smrti) %>% 
-  drop_na() %>% 
+odgovor1h = predsedniki %>%
+  distinct(predsednik, datum_smrti) %>%
+  drop_na() %>%
   separate(datum_smrti,
            into = c("leto", "mesec", "dan"),
            sep = "-") %>%
-  mutate(dan = dan %>% parse_number()) %>% 
-  mutate(med_10_in_20 = ifelse(10 <= dan & dan <= 20, TRUE, FALSE)) %>% 
-  group_by(med_10_in_20) %>% 
-  summarise(st = n()) %>% 
-  mutate(delez = (st / sum(st)) * 100) %>% 
-  filter(med_10_in_20) %>% 
+  mutate(dan = dan %>% parse_number()) %>%
+  mutate(med_10_in_20 = ifelse(10 <= dan &
+                                 dan <= 20, TRUE, FALSE)) %>%
+  group_by(med_10_in_20) %>%
+  summarise(st = n()) %>%
+  mutate(delez = (st / sum(st)) * 100) %>%
+  filter(med_10_in_20) %>%
   pull(delez)
-  
-  
+
+
 # ==================================================================
 # Končna rešitev
 odgovor1h
@@ -199,14 +201,16 @@ odgovor1h
 
 # ==================================================================
 # i)
-odgovor1i = predsedniki %>% 
-  distinct(predsednik) %>% 
-  mutate(ime = word(predsednik, 1),
-         priimek = word(predsednik, -1),
-         enaka_crka = str_sub(ime, 1, 1) == str_sub(priimek, 1, 1)) %>% 
-  filter(enaka_crka) %>% 
+odgovor1i = predsedniki %>%
+  distinct(predsednik) %>%
+  mutate(
+    ime = word(predsednik, 1),
+    priimek = word(predsednik, -1),
+    enaka_crka = str_sub(ime, 1, 1) == str_sub(priimek, 1, 1)
+  ) %>%
+  filter(enaka_crka) %>%
   pull(predsednik)
-  
+
 
 # ==================================================================
 # i)
@@ -221,8 +225,38 @@ odgovor1i
 
 # ==================================================================
 # a)
-
-
+odgovor2a = predsedniki %>%
+  left_join(
+    drzave_populacija %>%
+      mutate(drzava = drzava %>%
+               str_replace_all("District of Columbia", "D.C.")),
+    by = c("zvezna_drzava_rojstva" = "drzava"),
+    relationship = "many-to-many"
+  ) %>%
+  rename(
+    zvezna_drzava_rojstva_populacija = populacija,
+    zvezna_drzava_rojstva_populacija_leto = leto
+  ) %>%
+  left_join(
+    drzave_populacija %>%
+      mutate(drzava = drzava %>%
+               str_replace_all("District of Columbia", "D.C.")),
+    by = c("zvezna_drzava_smrti" = "drzava"),
+    relationship = "many-to-many"
+  ) %>%
+  rename(
+    zvezna_drzava_smrti_populacija = populacija,
+    zvezna_drzava_smrti_populacija_leto = leto
+  ) %>%
+  filter(
+    zvezna_drzava_smrti_populacija_leto == 2010 &
+      zvezna_drzava_rojstva_populacija_leto == 2010
+  ) %>%
+  distinct(predsednik,
+           zvezna_drzava_rojstva_populacija,
+           zvezna_drzava_smrti_populacija) %>%
+  filter(zvezna_drzava_rojstva_populacija > zvezna_drzava_smrti_populacija) %>%
+  pull(predsednik)
 
 
 # ==================================================================
@@ -233,9 +267,14 @@ odgovor2a
 
 # ==================================================================
 # b)
-
-
-
+odgovor2b = glavna_mesta %>%
+  mutate(
+    mesto_crke = sapply(str_replace_all(glavno_mesto, " ", ""), nchar),
+    drzava_crke = sapply(drzava, nchar)
+  ) %>%
+  filter(mesto_crke == drzava_crke &
+           leto == 2010) %>% # vzamemo le eno leto da se ne ponovijo podatki
+  pull(drzava)
 
 # ==================================================================
 # Končna rešitev
@@ -245,6 +284,28 @@ odgovor2b
 
 # ==================================================================
 # c)
+odgovor2c = predsedniki %>%
+  distinct(predsednik, kraj_rojstva, zvezna_drzava_rojstva) %>%
+  left_join(glavna_mesta %>%
+              filter(leto == 2010),
+            by = c("zvezna_drzava_rojstva" = "drzava")) %>%  # ne potrebujemo večkrat istega podatka
+  filter(kraj_rojstva == glavno_mesto) %>%
+  pull(predsednik)
+
+odgovor2c_1 = odgovor2c %>%
+  length()
+
+odgovor2c_2 = predsedniki %>%
+  distinct(predsednik, zvezna_drzava_rojstva) %>%
+  left_join(
+    drzave_populacija %>%
+      group_by(drzava) %>%
+      summarise(povprecje = mean(populacija)),
+    by = c("zvezna_drzava_rojstva" = "drzava")
+  ) %>%
+  filter(predsednik %in% odgovor2c) %>% 
+  filter(povprecje == max(povprecje)) %>% 
+  pull(predsednik)
 
 
 
