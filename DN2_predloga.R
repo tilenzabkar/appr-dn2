@@ -460,9 +460,8 @@ graf2 = ggplot(podatki2) +
     ),
     breaks = c("Začetek mandata", "Konec mandata") # uredimo vrstni red
   ) +
-  guides(
-    color = guide_legend(override.aes = list(shape = NA))  # Remove points from legend
-  ) +
+  guides(# odstranimo točke iz legende
+    color = guide_legend(override.aes = list(shape = NA))) +
   ylim(50, 70) +
   theme(
     panel.background = element_rect(fill = "white", color = NA),
@@ -495,7 +494,87 @@ graf2
 # ==================================================================
 # GRAF3
 
+library(rnaturalearthhires)
 
+rojstva_drzave = predsedniki %>%
+  distinct(predsednik, zvezna_drzava_rojstva) %>%
+  group_by(zvezna_drzava_rojstva) %>%
+  summarise(stevilo_rojstev = n())
+
+smrti_drzave = predsedniki %>%
+  distinct(predsednik, zvezna_drzava_smrti) %>%
+  mutate(zvezna_drzava_smrti = zvezna_drzava_smrti %>%
+           str_replace_all("D.C.", "District of Columbia")) %>% # ročno popravimo
+  group_by(zvezna_drzava_smrti) %>%
+  summarise(stevilo_smrti = n()) %>%
+  drop_na()
+
+# potreben še paket rnaturalearthhires
+
+zda = ne_states(country = "united states of america", returnclass = "sf")
+
+podatki3 = drzave_populacija %>%
+  distinct(drzava) %>%
+  left_join(rojstva_drzave, by = c("drzava" = "zvezna_drzava_rojstva")) %>%
+  left_join(smrti_drzave, by = c("drzava" = "zvezna_drzava_smrti")) %>%
+  mutate(
+    stevilo_rojstev = ifelse(is.na(stevilo_rojstev), 0, stevilo_rojstev),
+    stevilo_smrti = ifelse(is.na(stevilo_smrti), 0, stevilo_smrti),
+  ) %>%
+  right_join(zda, by = c("drzava" = "name")) %>%
+  select(drzava, stevilo_rojstev, stevilo_smrti, geometry) %>%   # brez tega ne deluje, moramo zagotoviti, da je sf objekt
+  # format za facet_wrap
+  pivot_longer(
+    cols = c(stevilo_rojstev, stevilo_smrti),
+    names_to = "vrsta",
+    values_to = "vrednost"
+  ) %>%
+  mutate(vrednost = factor(vrednost, levels = c(
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+  ))) %>% # da zagotovimo urejenost v končni tabeli
+  st_as_sf()
+
+ggplot() +
+  geom_sf(data = podatki3, aes(geometry = geometry, fill = vrednost)) +
+  facet_wrap(~ vrsta, labeller = labeller(
+    vrsta = c(stevilo_rojstev = "Zvezne države rojstva", stevilo_smrti = "Zvezne države smrti")
+  )) +
+  scale_fill_manual(
+    name = "Število predsednikov",
+    values = c(
+      "0" = "#ffffff",
+      "1" = "#f0f0f0",
+      "2" = "#e0d9f3",
+      "3" = "#c7aadf",
+      "4" = "#9e73b5",
+      "5" = "#7e409e",
+      "7" = "#7e7fc9",
+      "8" = "#5c4b8c",
+      "9" = "#40005c"
+    )
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold", size = 12, hjust = 0),
+    legend.title.position = "top",
+    strip.text = element_text(
+      size = 10,
+      face = "bold",
+      color = "black",
+      margin = margin(10, 0, 10, 0)
+    ),
+    strip.background = element_rect(fill = "#e0d9f3", color = "black"),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.caption = element_text(hjust = 0.5, size = 10)
+  ) +
+  coord_sf(xlim = c(-125, -65), ylim = c(25, 50)) +
+  ggtitle("Zvezne države ZDA po številu predsednikov") +
+  labs(caption = "Vir: Wikipedija")
 
 # ==================================================================
 # Končna rešitev
