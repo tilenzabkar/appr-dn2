@@ -389,10 +389,11 @@ podatki2 = predsedniki %>%
     starost_zacetek_mandata = mapply(izracunaj_starost, datum_rojstva, zacetek_mandata),
     starost_konec_mandata = mapply(izracunaj_starost, datum_rojstva, konec_mandata)
   ) %>%
-  distinct(predsednik,
-           starost_zacetek_mandata,
-           starost_konec_mandata,
-           obdobje_mandata) %>% # te stvari nas zanimajo, predsednik je indeks
+  distinct(
+    predsednik,
+    starost_zacetek_mandata,
+    starost_konec_mandata,
+    obdobje_mandata) %>% # te stvari nas zanimajo, predsednik je indeks
   group_by(obdobje_mandata) %>%
   summarise(
     povp_starost_zacetek = mean(starost_zacetek_mandata),
@@ -408,18 +409,17 @@ podatki2 = predsedniki %>%
 graf2 = ggplot(podatki2) +
   aes(x = obdobje_mandata, y = povp_starost, color = mandat, group = mandat) + # pogrupiramo po mandatu
   geom_point(size = 2) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_label(
     # dodamo število predsednikov v kvadratu vmes in jih oblikujemo
-    aes(y = sredina, # tukaj uporabimo shranjeno sredino za pozicijo
-      label = st_predsednikov),
+    aes(y = sredina, label = st_predsednikov), # tukaj uporabimo shranjeno sredino za pozicijo
     color = "#ca77f3",
     fill = "white",
     label.size = 0.3,
-    label.padding = unit(0.2, "lines"),
+    label.padding = unit(0.2, "lines"), # uredimo izgled
     label.r = unit(0.15, "lines")
   ) +
-  labs( # dodamo naslove in ime legendi
+  labs( # dodamo naslove in ime legende
     x = "Obdobje",
     y = "Povprečna starost v letih",
     title = "Povprečna starost predsednikov na začetku in koncu mandata",
@@ -432,7 +432,7 @@ graf2 = ggplot(podatki2) +
   ) +
   guides(# odstranimo točke iz legende
     color = guide_legend(override.aes = list(shape = NA))) +
-  ylim(50, 70) +
+  ylim(50, 70) + # y-os med 50 in 70
   theme(
     panel.background = element_rect(fill = "white", color = NA), # odstranimo ozadja
     axis.line = element_line(color = "black", linewidth = 0.8), # naredimo debelejše osi
